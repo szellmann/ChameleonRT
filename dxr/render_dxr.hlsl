@@ -206,7 +206,7 @@ void RayGen() {
         float3 v_x, v_y;
         float3 v_z = payload.normal.xyz;
         // For opaque objects (or in the future, thin ones) make the normal face forward
-        if (mat.specular_transmission == 0.f && dot(w_o, v_z) < 0.0) {
+        if (mat.specular_transmission == 0.f && dot(w_o, v_z) < 0.f) {
             v_z = -v_z;
         }
         ortho_basis(v_x, v_y, v_z);
