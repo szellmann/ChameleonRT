@@ -118,8 +118,8 @@ float smith_shadowing_ggx(float h_dot_o, float alpha_g) {
 	return 1.f / (h_dot_o + sqrt(a + b - a * b));
 }
 
-float smith_shadowing_ggx_aniso(float h_dot_o, float o_dot_x, float o_dot_y, float2 alpha) {
-	return 1.f / (h_dot_o + sqrt(pow2(o_dot_x * alpha.x) + pow2(o_dot_y * alpha.y) + pow2(h_dot_o)));
+float smith_shadowing_ggx_aniso(float n_dot_o, float o_dot_x, float o_dot_y, float2 alpha) {
+	return 1.f / (n_dot_o + sqrt(pow2(o_dot_x * alpha.x) + pow2(o_dot_y * alpha.y) + pow2(n_dot_o)));
 }
 
 // Sample a reflection direction the hemisphere oriented along n and spanned by v_x, v_y using the random samples in s
