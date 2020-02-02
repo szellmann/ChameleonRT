@@ -112,14 +112,14 @@ float gtr_2_aniso(float h_dot_n, float h_dot_x, float h_dot_y, vec2 alpha) {
 			* pow2(pow2(h_dot_x / alpha.x) + pow2(h_dot_y / alpha.y) + h_dot_n * h_dot_n));
 }
 
-float smith_shadowing_ggx(float n_dot_o, float alpha_g) {
+float smith_shadowing_ggx(float h_dot_o, float alpha_g) {
 	float a = alpha_g * alpha_g;
-	float b = n_dot_o * n_dot_o;
-	return 1.f / (n_dot_o + sqrt(a + b - a * b));
+	float b = h_dot_o * h_dot_o;
+	return 1.f / (h_dot_o + sqrt(a + b - a * b));
 }
 
-float smith_shadowing_ggx_aniso(float n_dot_o, float o_dot_x, float o_dot_y, vec2 alpha) {
-	return 1.f / (n_dot_o + sqrt(pow2(o_dot_x * alpha.x) + pow2(o_dot_y * alpha.y) + pow2(n_dot_o)));
+float smith_shadowing_ggx_aniso(float h_dot_o, float o_dot_x, float o_dot_y, vec2 alpha) {
+	return 1.f / (h_dot_o + sqrt(pow2(o_dot_x * alpha.x) + pow2(o_dot_y * alpha.y) + pow2(h_dot_o)));
 }
 
 // Sample a reflection direction the hemisphere oriented along n and spanned by v_x, v_y using the random samples in s
@@ -236,7 +236,7 @@ vec3 disney_microfacet_isotropic(in const DisneyMaterial mat, in const vec3 n,
 	float alpha = max(0.001, mat.roughness * mat.roughness);
 	float d = gtr_2(dot(n, w_h), alpha);
 	vec3 f = mix(spec, vec3(1, 1, 1), schlick_weight(dot(w_i, w_h)));
-	float g = smith_shadowing_ggx(dot(n, w_i), alpha) * smith_shadowing_ggx(dot(n, w_o), alpha);
+	float g = smith_shadowing_ggx(dot(w_h, w_i), alpha) * smith_shadowing_ggx(dot(w_h, w_o), alpha);
 	return d * f * g;
 }
 
@@ -257,7 +257,7 @@ vec3 disney_microfacet_transmission_isotropic(in const DisneyMaterial mat, in co
 	float d = gtr_2(abs(dot(n, w_h)), alpha);
 
 	float f = fresnel_dielectric(abs(dot(w_i, n)), eta_o, eta_i);
-	float g = smith_shadowing_ggx(abs(dot(n, w_i)), alpha) * smith_shadowing_ggx(abs(dot(n, w_o)), alpha);
+	float g = smith_shadowing_ggx(abs(dot(w_h, w_i)), alpha) * smith_shadowing_ggx(abs(dot(w_h, w_o)), alpha);
 
 	float i_dot_h = dot(w_i, w_h);
 	float o_dot_h = dot(w_o, w_h);
@@ -281,8 +281,8 @@ vec3 disney_microfacet_anisotropic(in const DisneyMaterial mat, in const vec3 n,
 	vec2 alpha = vec2(max(0.001, a / aspect), max(0.001, a * aspect));
 	float d = gtr_2_aniso(dot(n, w_h), abs(dot(w_h, v_x)), abs(dot(w_h, v_y)), alpha);
 	vec3 f = mix(spec, vec3(1, 1, 1), schlick_weight(dot(w_i, w_h)));
-	float g = smith_shadowing_ggx_aniso(dot(n, w_i), abs(dot(w_i, v_x)), abs(dot(w_i, v_y)), alpha)
-		* smith_shadowing_ggx_aniso(dot(n, w_o), abs(dot(w_o, v_x)), abs(dot(w_o, v_y)), alpha);
+	float g = smith_shadowing_ggx_aniso(dot(w_h, w_i), abs(dot(w_i, v_x)), abs(dot(w_i, v_y)), alpha)
+		* smith_shadowing_ggx_aniso(dot(w_h, w_o), abs(dot(w_o, v_x)), abs(dot(w_o, v_y)), alpha);
 	return d * f * g;
 }
 
@@ -293,7 +293,7 @@ float disney_clear_coat(in const DisneyMaterial mat, in const vec3 n,
 	float alpha = mix(0.1f, 0.001f, mat.clearcoat_gloss);
 	float d = gtr_1(dot(n, w_h), alpha);
 	float f = mix(0.04f, 1.f, schlick_weight(dot(w_i, n)));
-	float g = smith_shadowing_ggx(dot(n, w_i), 0.25f) * smith_shadowing_ggx(dot(n, w_o), 0.25f);
+	float g = smith_shadowing_ggx(dot(w_h, w_i), 0.25f) * smith_shadowing_ggx(dot(w_h, w_o), 0.25f);
 	return 0.25 * mat.clearcoat * d * f * g;
 }
 
