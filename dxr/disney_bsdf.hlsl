@@ -112,7 +112,19 @@ float gtr_2_aniso(float h_dot_n, float h_dot_x, float h_dot_y, float2 alpha) {
 			* pow2(pow2(h_dot_x / alpha.x) + pow2(h_dot_y / alpha.y) + h_dot_n * h_dot_n));
 }
 
+float smith_shadowing_ggx2(float n_dot_o, float alpha_g) {
+    //alpha_g = (0.5f + alpha_g / 2.f);
+	float a = alpha_g * alpha_g;
+	float b = n_dot_o * n_dot_o;
+	return 1.f / (n_dot_o + sqrt(a + b - a * b));
+    // TODO: How does their derivation cancel the 2? PBRT doesn't seem to do that?
+    // yet putting this version (derived from Walter et al.) I get really nasty results
+    // maybe break down to the individual lobes and see what's up
+    //return 2.f / (n_dot_o + sqrt(a + b - a * b));
+}
+
 float smith_shadowing_ggx(float n_dot_o, float alpha_g) {
+    alpha_g = (0.5f + alpha_g / 2.f);
 	float a = alpha_g * alpha_g;
 	float b = n_dot_o * n_dot_o;
 	return 1.f / (n_dot_o + sqrt(a + b - a * b));
@@ -240,7 +252,7 @@ float3 disney_microfacet_isotropic(in const DisneyMaterial mat, in const float3 
 	float alpha = max(0.001, mat.roughness * mat.roughness);
 	float d = gtr_2(dot(n, w_h), alpha);
 	float3 f = lerp(spec, float3(1, 1, 1), schlick_weight(dot(w_i, w_h)));
-	float g = smith_shadowing_ggx(dot(n, w_i), alpha) * smith_shadowing_ggx(dot(n, w_o), alpha);
+	float g = smith_shadowing_ggx2(dot(n, w_i), alpha) * smith_shadowing_ggx2(dot(n, w_o), alpha);
 	return d * f * g;
 }
 
@@ -264,7 +276,7 @@ float3 disney_microfacet_transmission_isotropic(in const DisneyMaterial mat, in 
 	float d = gtr_2(abs(dot(n, w_h)), alpha);
 
 	float f = fresnel_dielectric(abs(dot(w_i, w_h)), eta_o, eta_i);
-	float g = smith_shadowing_ggx(abs(dot(n, w_i)), alpha) * smith_shadowing_ggx(abs(dot(n, w_o)), alpha);
+	float g = smith_shadowing_ggx2(abs(dot(n, w_i)), alpha) * smith_shadowing_ggx2(abs(dot(n, w_o)), alpha);
 
 	float i_dot_h = dot(w_i, w_h);
 	float o_dot_h = dot(w_o, w_h);
