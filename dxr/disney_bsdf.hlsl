@@ -105,6 +105,10 @@ float fresnel_dielectric(float cos_theta_i, float eta_i, float eta_t) {
     return (pow2(r_parl) + pow2(r_perp)) / 2.f;
 }
 
+float fresnel_schlick(const float f0, const float cos_theta) {
+    return f0 + (1.f - f0) * schlick_weight(cos_theta);
+}
+
 // TODO: Also add Fresnel conductor
 
 float gtr_2(const float cos_theta_h, const float alpha) {
@@ -175,6 +179,7 @@ float3 torrance_sparrow_reflection(in const DisneyMaterial mat, in const float3 
     const float alpha = max(0.001f, pow2(mat.roughness));
     const float d = gtr_2(abs(dot(w_h, n)), alpha);
     const float g = smith_shadowing_ggx_2(cos_theta_o, alpha) * smith_shadowing_ggx_2(cos_theta_i, alpha);
+    // TODO: Need to lerp between dielectric and schlick fresnel (or just use schlick?)
     const float f = fresnel_dielectric(abs(dot(w_i, w_h)), mat.ior, 1.f);
     return mat.base_color * d * g * f / (4.f * cos_theta_o * cos_theta_i);
 }
@@ -186,7 +191,7 @@ float3 disney_brdf(in const DisneyMaterial mat, in const float3 n,
         return 0.f;
     }
     //return torrance_sparrow_reflection(mat, n, w_o, w_i);
-    return (torrance_sparrow_reflection(mat, n, w_o, w_i) + disney_diffuse(mat, n, w_o, w_i)) / 2.f;
+    return (torrance_sparrow_reflection(mat, n, w_o, w_i) + (1.f - mat.metallic) * disney_diffuse(mat, n, w_o, w_i)) / 2.f;
 }
 
 float disney_pdf(in const DisneyMaterial mat, in const float3 n,
