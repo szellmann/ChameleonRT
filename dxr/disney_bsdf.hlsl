@@ -75,6 +75,10 @@ float schlick_weight(float cos_theta) {
     return pow(saturate(1.f - cos_theta), 5.f);
 }
 
+float schlick_r0_from_ior(float ior) {
+    return pow2(ior - 1.f) / pow2(ior + 1.f);
+}
+
 // Complete Fresnel Dielectric computation, for transmission at ior near 1
 // they mention having issues with the Schlick approximation.
 // eta_i: material on incident side's ior
@@ -109,7 +113,9 @@ float fresnel_schlick(const float f0, const float cos_theta) {
     return f0 + (1.f - f0) * schlick_weight(cos_theta);
 }
 
-// TODO: Also add Fresnel conductor
+float3 fresnel_schlick(const float3 f0, const float cos_theta) {
+    return f0 + (1.f - f0) * schlick_weight(cos_theta);
+}
 
 float gtr_2(const float cos_theta_h, const float alpha) {
     const float alpha_sqr = pow2(alpha);
@@ -151,6 +157,17 @@ float gtr_2_reflection_pdf(in const float3 w_o, in const float3 w_i, in const fl
     return d * cos_theta_h / (4.f * dot(w_o, w_h));
 }
 
+float3 disney_fresnel(in const DisneyMaterial mat, in const float cos_theta_i) {
+    const float lum = luminance(mat.base_color);
+	const float3 tint = lum > 0.f ? mat.base_color / lum : float3(1.f, 1.f, 1.f);
+    const float3 spec = lerp(mat.metallic,
+            schlick_r0_from_ior(mat.ior) * lerp(mat.specular_tint, float3(1.f, 1.f, 1.f), tint),
+            mat.base_color);
+    const float3 dielectric = fresnel_dielectric(cos_theta_i, 1.f, mat.ior);
+    const float3 conductor = fresnel_schlick(spec, cos_theta_i);
+    return lerp(mat.metallic, dielectric, conductor);
+}
+
 float3 disney_diffuse(in const DisneyMaterial mat, in const float3 n,
         in const float3 w_o, in const float3 w_i)
 {
@@ -164,7 +181,7 @@ float3 disney_diffuse(in const DisneyMaterial mat, in const float3 n,
     return mat.base_color * M_1_PI * lerp(1.f, fd90, fi) * lerp(1.f, fd90, fo);
 }
 
-// Dielectric microfacet reflection model
+// Microfacet reflection model: Torrance-Sparrow w/ a modified Fresnel term
 float3 torrance_sparrow_reflection(in const DisneyMaterial mat, in const float3 n,
         in const float3 w_o, in const float3 w_i)
 {
@@ -179,9 +196,8 @@ float3 torrance_sparrow_reflection(in const DisneyMaterial mat, in const float3 
     const float alpha = max(0.001f, pow2(mat.roughness));
     const float d = gtr_2(abs(dot(w_h, n)), alpha);
     const float g = smith_shadowing_ggx_2(cos_theta_o, alpha) * smith_shadowing_ggx_2(cos_theta_i, alpha);
-    // TODO: Need to lerp between dielectric and schlick fresnel (or just use schlick?)
-    const float f = fresnel_dielectric(abs(dot(w_i, w_h)), mat.ior, 1.f);
-    return mat.base_color * d * g * f / (4.f * cos_theta_o * cos_theta_i);
+    const float3 f = disney_fresnel(mat, abs(dot(w_i, w_h)));
+    return (mat.base_color * d * g * f) / (4.f * cos_theta_o * cos_theta_i);
 }
 
 float3 disney_brdf(in const DisneyMaterial mat, in const float3 n,
@@ -210,7 +226,7 @@ float3 sample_disney_brdf(in const DisneyMaterial mat, in const float3 n,
         out float3 w_i, out float pdf)
 {
     int component = 0;
-    if (mat.specular_transmission == 0.f) {
+    if (true) {//mat.specular_transmission == 0.f) {
         component = pcg32_randomf(rng) * 2.f;
         component = clamp(component, 0, 1);
     } else {
